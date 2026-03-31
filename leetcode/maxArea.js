@@ -1,0 +1,19 @@
+var maxArea = function (height) {
+  let left = 0;
+  let right = height.length - 1;
+  let maxArea = 0;
+
+  while (left < right) {
+    let width = right - left;
+    let currentHeight = Math.min(height[left], height[right]);
+    currentArea = width * currentHeight;
+    maxArea = Math.max(currentArea, maxArea);
+
+    if (height[left] < height[right]) {
+      left++;
+    } else {
+      right--;
+    }
+  }
+  return maxArea;
+};
