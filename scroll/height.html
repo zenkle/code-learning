@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>虚拟滚动 可运行版</title>
+  <style>
+    /* 滚动容器 */
+    #listContainer {
+      width: 320px;
+      height: 400px;
+      border: 1px solid #ccc;
+      /* 关键：只让自身滚动 */
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* 内部相对定位，给子元素做定位基准 */
+    .list-inner {
+      position: relative;
+    }
+
+    /* 占位层：撑总高度，撑起滚动条 */
+    .phantom {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+
+    /* 真实渲染列表 */
+    .real-list {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+
+    .list-item {
+      height: 50px;
+      line-height: 50px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+<div id="listContainer">
+  <div class="list-inner">
+    <!-- 占位层 -->
+    <div class="phantom"></div>
+    <!-- 真实渲染DOM -->
+    <div class="real-list"></div>
+  </div>
+</div>
+
+<script>
+// 配置
+const ITEM_HEIGHT = 50;     // 每项固定高度
+const WRAP_HEIGHT = 400;    // 可视容器高度
+const BUFFER = 2;           // 上下缓冲条数
+const TOTAL_COUNT = 10000;  // 总数据量
+
+// 生成模拟数据
+const dataList = Array.from({ length: TOTAL_COUNT }, (_, idx) => `列表第 ${idx + 1} 项`);
+
+// DOM
+const container = document.getElementById('listContainer');
+const phantom = document.querySelector('.phantom');
+const realList = document.querySelector('.real-list');
+
+// 一屏能显示8条
+const visibleNum = Math.floor(WRAP_HEIGHT / ITEM_HEIGHT);
+
+// 1. 占位层撑满总高度，一条高50，一共50*10000的高度
+phantom.style.height = `${ITEM_HEIGHT * TOTAL_COUNT}px`;
+
+// 渲染逻辑
+function renderVirtualScroll() {
+  // 滚动卷上去的距离
+  const scrollTop = container.scrollTop;
+
+  // 计算起始索引
+ let startIndex = Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER;
+  startIndex = Math.max(0, startIndex);
+
+  // 结束索引，缓冲了4条数据
+  let endIndex = startIndex + visibleNum + BUFFER * 2;
+  endIndex = Math.min(TOTAL_COUNT, endIndex);
+
+  // 截取要渲染的数据
+  const renderArr = dataList.slice(startIndex, endIndex);
+
+  // 真实列表向下偏移，对齐滚动位置
+  realList.style.transform = `translateY(${startIndex * ITEM_HEIGHT}px)`;
+
+  // 渲染DOM
+  realList.innerHTML = renderArr.map(item => 
+    `<div class="list-item">${item}</div>`
+  ).join('');
+}
+
+// 初始渲染
+renderVirtualScroll();
+
+// 监听滚动
+container.addEventListener('scroll', renderVirtualScroll);
+</script>
+</body>
+</html>
