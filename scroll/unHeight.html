@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <style>
+    #container {
+      width: 320px;
+      height: 400px;
+      border: 1px solid #ccc;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .wrap {
+      position: relative;
+    }
+    /* 占位层 撑总高度 */
+    .phantom {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    /* 真实渲染层 */
+    .real-list {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    .item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+  </style>
+  <body>
+    <div id="container">
+      <div class="wrap">
+        <div class="phantom"></div>
+        <div class="real-list"></div>
+      </div>
+    </div>
+  </body>
+  <script>
+    // 总数据量
+    const total = 10000;
+    const BUFFER = 2;
+    const WRAP_HEIGHT = 400;
+       // 生成1万条模拟数据
+    const listData = Array.from({ length: total }, (_, i) => {
+      const len = Math.floor(Math.random() * 10) + 1;
+      return `第${i + 1}条 ` + "测试内容".repeat(len);
+    });
+    // DOM
+    const container = document.getElementById("container");
+    const phantom = document.querySelector(".phantom");
+    const realList = document.querySelector(".real-list");
+    // ========== 核心缓存 ==========
+    // itemHeightList：存每一项真实高度
+    const itemHeightList = new Array(total).fill(50);
+    // offsetList：存每一项距离顶部的累积偏移
+    const offsetList = new Array(total).fill(0);
+
+    function initOffset() {
+      offsetList[0] = 0;
+      for (let i = 1; i < total; i++) {
+        offsetList[i] = offsetList[i - 1] + itemHeightList[i - 1];
+      }
+      const totalHeight = offsetList[total - 1] + itemHeightList[total - 1];
+      phantom.style.height = `${totalHeight}px`;
+    }
+    initOffset();
+    function findStartIndex(scrollTop) {
+      let left = 0;
+      let right = total - 1;
+      while (left < right) {
+        let mid = Math.floor((left + right) / 2);
+        if (offsetList[mid] < scrollTop) {
+          left = mid + 1;
+        } else {
+          right = mid;
+        }
+      }
+      return left;
+    }
+    function render() {
+      const scrollTop = container.scrollTop;
+      let startIndex = findStartIndex(scrollTop) - BUFFER;
+      startIndex = Math.max(0, startIndex);
+
+      const viewCount = Math.ceil(WRAP_HEIGHT / 40) + BUFFER * 2;
+      let endIndex = startIndex + viewCount;
+      endIndex = Math.min(total, endIndex);
+      // 截取数据
+      const renderData = listData.slice(startIndex, endIndex);
+
+      // 渲染DOM
+      realList.innerHTML = renderData
+        .map((text, idx) => {
+          return `<div class="item" data-index="${startIndex + idx}">${text}</div>`;
+        })
+        .join("");
+
+      // 关键：渲染后 实时更新每一项真实高度 & 重新算偏移
+      updateItemHeight();
+
+      // 偏移量 = 起始项的累积偏移
+      realList.style.transform = `translateY(${offsetList[startIndex]}px)`;
+    }
+
+    function updateItemHeight() {
+      const items = realList.querySelectorAll(".item");
+      items.forEach((el) => {
+        const idx = Number(el.dataset.index);
+        const realH = el.offsetHeight;
+        if (itemHeightList[idx] !== realH) {
+          itemHeightList[idx] = realH;
+          for (let i = idx + 1; i < total; i++) {
+            offsetList[i] = offsetList[i - 1] + itemHeightList[i - 1];
+          }
+          // 更新占位层总高
+          const totalHeight = offsetList[total - 1] + itemHeightList[total - 1];
+          phantom.style.height = totalHeight + "px";
+        }
+      });
+    }
+
+    render();
+    container.addEventListener('scroll', render);
+  </script>
+</html>
